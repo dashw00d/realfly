@@ -39,7 +39,7 @@ Do not expect native Wayland parity.
 - **23,210 neuron soma positions** (of 139,255 in FlyWire v783) render the
   rotating brain window, colored by super-class (FlyWire's coarse cell-type
   grouping).
-- **A 668-neuron circuit with ~19,000 real synaptic connections** (synapse
+- **A 732-neuron circuit with ~18,000 real synaptic connections** (synapse
   counts, signed by neurotransmitter prediction) runs as a 1 kHz
   leaky-integrate-and-fire (LIF) simulation:
   - **LC4 (104) + LPLC2 (210)** looming-detector visual neurons
@@ -47,6 +47,10 @@ Do not expect native Wayland parity.
   - **DNa01 + DNa02 (4)** steering neurons · **DNp09 (2)** forward walking
   - **DNg11 (6)** grooming · **MDN (4)** backward walking ("moonwalker")
   - **DNp02/DNp04/DNp11 (6)** escape-maneuver (wing) neurons
+  - **hunger NSCs (34)** — Hugin / DH44 / DILP / DMS; walk competitor
+  - **thirst cores (6)** — AstA1 / BiT / CAPA; walk toward the screen edge
+  - **sleep neurons (8)** — FB6A / FB2B dFB; sleep from their rate
+  - **clock LNvs (16)** — s-LNv / l-LNv; hour lands on them
   - their 330 strongest partners, including ascending (proprioceptive) and
     sensory (wind) neurons
 - **Escape is not scripted.** Your cursor's approach becomes looming input to
@@ -69,10 +73,21 @@ layered on the real graph. Everything downstream of the sensory neurons —
 who connects to whom, and how strongly — is FlyWire data.
 
 The body is invented: tripod gait, wing kinematics, ledge following, and
-sleep posture are not in the connectome. Circadian activity is a
-hand-authored curve (dawn/dusk peaks, midday siesta). `environmentTempo`
-generalizes upstream macOS `thermalTempo` (hot Mac → faster fly) to
-platform power/thermal signals; Linux stays at 1.0.
+sleep posture are not in the connectome. Circadian *gain* is still a
+hand-authored curve (dawn/dusk peaks, midday siesta) compressed toward 1
+— PDF LNvs have ~60 chemical outs, so they cannot set network gain via
+wiring. `environmentTempo` generalizes upstream macOS `thermalTempo`
+(hot Mac → faster fly) to platform power/thermal signals; Linux stays at 1.0.
+
+Hunger, thirst, and sleep are **wired**: desktop deprivation and idle+hour
+land on those groups the way loom lands on LC4; HUD `hungerDrive` /
+`thirstDrive` / `sleepDrive` come from population rates. There is no
+`foraging` timer state and no `if idle > 600` sleep. Clock cells receive
+hour (HUD `clockDrive`); `activityScale` stays the compressed curve.
+Nociception is omitted: FlyWire v783 has no named Basin / ppk types, even
+among the 29 ascending partners, so a slammed window is still ledge-loss
+takeoff (not extra drive onto a pain group). Courtship, olfaction, and
+mushroom body are omitted.
 
 ---
 
@@ -145,9 +160,9 @@ pnpm test
 ```
 
 `--simtest` must PASS: GF silent at rest, fires on loom; locomotor drive
-fluctuates; stim works; siesta alive. `--behaviortest` is 17 end-to-end
-checks (7 neuron stim scenarios + 10 body checks). Do not retune LIF
-constants to make a test green — see the port contract.
+fluctuates; stim works; siesta alive. `--behaviortest` covers the original
+7 neuron stim scenarios plus hunger/thirst/sleepn probes and body checks. Do not
+retune LIF constants to make a test green — see the port contract.
 
 Also available: `pnpm typecheck`.
 
@@ -205,8 +220,10 @@ motion stimulates its sensory (wind) partners.
   **Typing is vibration** (idle-time API — knows *when* keys were pressed,
   never which).
 - **Circadian rhythm**: dawn/dusk activity peaks, midday siesta, night
-  quiescence. **Sleep**: idle at night → it sleeps, breathing slowly, with
-  raised arousal threshold; it grooms after waking.
+  quiescence (compressed `activityScale`). Hour also lands on PDF LNvs.
+  **Sleep**: idle+hour onto dFB cells → they fire → it sleeps, breathing
+  slowly, with `sensoryGate` 0.55 (GF still escapes a loom); it grooms
+  after waking.
 - **environmentTempo** (was macOS `thermalTempo`): flies are ectotherms.
   macOS thermal state and Windows CPU speed-limit / power scale walking
   speed; Linux is 1.0.

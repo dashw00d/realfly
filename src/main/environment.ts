@@ -1,5 +1,5 @@
 /**
- * Circadian activity + idle→sleep + typing vibration + environmentTempo.
+ * Circadian activity + idle+hour → sleepn/clock inject + typing + environmentTempo.
  * Control points live in src/shared/circadian.ts (Environment.swift port).
  *
  * Typing uses idle-time (when, never which keys). Global key identity is never
@@ -39,6 +39,23 @@ function loadPowerMonitor(): PowerMonitorLike | null {
 /** sleepy = (idle > 600 && (hour >= 22 || hour < 6)) || idle > 1800 */
 export function isSleepy(idleSeconds: number, hour: number): boolean {
   return (idleSeconds > 600 && (hour >= 22 || hour < 6)) || idleSeconds > 1800
+}
+
+/**
+ * Analog 0..1 of idle+hour onto sleepn (like loom onto LC4).
+ * Hits 1 at the isSleepy thresholds; the body reads sleep from the rate, not this.
+ */
+export function sleepInFromIdle(idleSeconds: number, hour: number): number {
+  if (!Number.isFinite(idleSeconds) || idleSeconds <= 0) return 0
+  const night = hour >= 22 || hour < 6
+  const nightRamp = night ? idleSeconds / 600 : 0
+  const longRamp = idleSeconds / 1800
+  return Math.min(1, Math.max(0, Math.max(nightRamp, longRamp)))
+}
+
+/** Hour transduction onto PDF LNvs. Same curve as circadianActivity. */
+export function clockInFromHour(hour: number): number {
+  return circadianActivity(hour)
 }
 
 /** Swift: typingLevel += ((keyIdle < 0.6 ? 1 : 0) - typingLevel) * 0.15 */
@@ -133,6 +150,28 @@ export type AmbientSample = {
   tempo: number
   activityScale: number
   sensoryGate: number
+  sleepIn: number
+  clockIn: number
+}
+
+/**
+ * Desktop hunger/thirst 0..1. Hours-scale leaky integrators injected as
+ * hungerIn/thirstIn — never `state = foraging`. Hot machine drains slightly faster.
+ */
+export function stepDepletion(
+  hunger: number,
+  thirst: number,
+  dt: number,
+  tempo: number,
+): { hunger: number; thirst: number } {
+  // Rate, not hunger *= 1.05 each 60 Hz tick (that would saturate in seconds).
+  const step = dt > 0 ? dt : 0
+  const hungerRate = (1 / (6 * 3600)) * (tempo > 1.1 ? 1.05 : 1)
+  const thirstRate = (1 / (4 * 3600)) * (tempo > 1.2 ? 1.1 : 1)
+  return {
+    hunger: Math.min(1, Math.max(0, hunger + step * hungerRate)),
+    thirst: Math.min(1, Math.max(0, thirst + step * thirstRate)),
+  }
 }
 
 export function sampleAmbient(input: {
@@ -140,14 +179,20 @@ export function sampleAmbient(input: {
   typing: number
   tempo?: number
   now?: Date
+  /** Previous-step circuit sleep. Neuromodulation uses this, not isSleepy. */
+  circuitSleep?: boolean
 }): AmbientSample {
   const hour = hourOf(input.now ?? new Date())
   const activity = circadianActivity(hour)
-  const sleepy = isSleepy(input.idleSeconds, hour)
+  const sleepIn = sleepInFromIdle(input.idleSeconds, hour)
+  const clockIn = clockInFromHour(hour)
+  const sleepy = input.circuitSleep === true
   const typing = typingFromIdle(input.idleSeconds, input.typing)
   const tempo = input.tempo ?? 1.0
+  // activityScale from the hour curve, compressed toward 1 — never linear in
+  // clockDrive/sleep. Circuit sleep applies the 0.75 / sensoryGate 0.55.
   const { activityScale, sensoryGate } = simNeuromodulation(activity, sleepy)
-  return { hour, activity, sleepy, typing, tempo, activityScale, sensoryGate }
+  return { hour, activity, sleepy, typing, tempo, activityScale, sensoryGate, sleepIn, clockIn }
 }
 
 /**

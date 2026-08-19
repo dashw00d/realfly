@@ -54,6 +54,10 @@ export class LIFSim {
   escw: number[] = []
   ascend: number[] = []
   sens: number[] = []
+  hunger: number[] = []
+  thirst: number[] = []
+  sleepn: number[] = []
+  clock: number[] = []
   private readonly ascendPhase: Float64Array
 
   loomL = 0
@@ -61,6 +65,12 @@ export class LIFSim {
   gaitDrive = 0
   gaitPhase = 0
   airPuff = 0
+  hungerIn = 0
+  thirstIn = 0
+  /** Idle+hour 0..1 onto dFB sleep cells. Not sensory-gated (gate is a consequence of sleep). */
+  sleepIn = 0
+  /** Hour 0..1 (circadianActivity) onto PDF LNvs. */
+  clockIn = 0
   activityScale = 1
   sensoryGate = 1
 
@@ -71,6 +81,10 @@ export class LIFSim {
   rateFwd = 0
   rateGroom = 0
   rateEscW = 0
+  rateHunger = 0
+  rateThirst = 0
+  rateSleep = 0
+  rateClock = 0
   ratePop = 0
   private gfLatch = false
   simMs = 0
@@ -132,6 +146,18 @@ export class LIFSim {
         case 'escw':
           this.escw.push(i)
           break
+        case 'hunger':
+          this.hunger.push(i)
+          break
+        case 'thirst':
+          this.thirst.push(i)
+          break
+        case 'sleepn':
+          this.sleepn.push(i)
+          break
+        case 'clock':
+          this.clock.push(i)
+          break
         case 'other':
           if (nr.type === 'ascending') this.ascend.push(i)
           else if (nr.type === 'sensory') this.sens.push(i)
@@ -161,7 +187,14 @@ export class LIFSim {
         case 'mdn':
         case 'dng11':
         case 'escw':
+        case 'hunger':
+        case 'thirst':
           base[i] = 0.036
+          break
+        case 'sleepn':
+        case 'clock':
+          // Quiet until idle+hour lands. 0.036-class would sleep at rest (first-wins).
+          base[i] = 0.004
           break
         case 'dnp09':
           base[i] = 0.038
@@ -236,6 +269,10 @@ export class LIFSim {
     const nFwd = Math.max(1, this.fwd.length)
     const nGroom = Math.max(1, this.groom.length)
     const nEscw = Math.max(1, this.escw.length)
+    const nHunger = Math.max(1, this.hunger.length)
+    const nThirst = Math.max(1, this.thirst.length)
+    const nSleep = Math.max(1, this.sleepn.length)
+    const nClock = Math.max(1, this.clock.length)
     const dnaLSet = this.dnaL
 
     for (let t = 0; t < ms; t++) {
@@ -276,6 +313,24 @@ export class LIFSim {
       if (this.airPuff > 0.001) {
         const add = this.airPuff * 0.12 * this.sensoryGate
         for (const i of this.sens) v[i]! += add
+      }
+      if (this.hungerIn > 0.001) {
+        const add = this.hungerIn * 0.12 * this.sensoryGate
+        for (const i of this.hunger) v[i]! += add
+      }
+      if (this.thirstIn > 0.001) {
+        const add = this.thirstIn * 0.12 * this.sensoryGate
+        for (const i of this.thirst) v[i]! += add
+      }
+      // Internal: idle+hour onto sleepn/clock. Do not sensory-gate — sensoryGate
+      // drops *because* sleepn fire; gating here would chatter wake/sleep.
+      if (this.sleepIn > 0.001) {
+        const add = this.sleepIn * 0.12
+        for (const i of this.sleepn) v[i]! += add
+      }
+      if (this.clockIn > 0.001) {
+        const add = this.clockIn * 0.12
+        for (const i of this.clock) v[i]! += add
       }
       for (const s of this.activeStims) {
         if (this.simMs < s.untilMs) {
@@ -325,6 +380,10 @@ export class LIFSim {
       let cF = 0
       let cG = 0
       let cW = 0
+      let cHunger = 0
+      let cThirst = 0
+      let cSleep = 0
+      let cClock = 0
       for (const i of spiked) {
         switch (roles[i]) {
           case 'lc4':
@@ -348,6 +407,18 @@ export class LIFSim {
           case 'escw':
             cW++
             break
+          case 'hunger':
+            cHunger++
+            break
+          case 'thirst':
+            cThirst++
+            break
+          case 'sleepn':
+            cSleep++
+            break
+          case 'clock':
+            cClock++
+            break
           case 'gf':
             this.gfLatch = true
             break
@@ -362,6 +433,10 @@ export class LIFSim {
       this.rateFwd += (cF * 1000 / nFwd - this.rateFwd) * RATE_ALPHA
       this.rateGroom += (cG * 1000 / nGroom - this.rateGroom) * RATE_ALPHA
       this.rateEscW += (cW * 1000 / nEscw - this.rateEscW) * RATE_ALPHA
+      this.rateHunger += (cHunger * 1000 / nHunger - this.rateHunger) * RATE_ALPHA
+      this.rateThirst += (cThirst * 1000 / nThirst - this.rateThirst) * RATE_ALPHA
+      this.rateSleep += (cSleep * 1000 / nSleep - this.rateSleep) * RATE_ALPHA
+      this.rateClock += (cClock * 1000 / nClock - this.rateClock) * RATE_ALPHA
       this.ratePop += (spiked.length * 1000 / Math.max(1, n) - this.ratePop) * RATE_ALPHA
 
       if (this.spikeBus !== undefined) {

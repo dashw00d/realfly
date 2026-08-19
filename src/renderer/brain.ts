@@ -90,6 +90,10 @@ function emptyHud(): BrainHudSnapshot {
     loomR: 0,
     walkDrive: 0,
     groomDrive: 0,
+    hungerDrive: 0,
+    thirstDrive: 0,
+    sleepDrive: 0,
+    clockDrive: 0,
     backward: false,
     turnBias: 0,
     nervous: 0,
@@ -155,6 +159,10 @@ try {
     setText('hud-lc', `${hud.rateLoom.toFixed(1)} Hz`, 'hud-v lc')
     setText('hud-walk', hud.walkDrive.toFixed(2), 'hud-v walk')
     setText('hud-groom', hud.groomDrive.toFixed(2), 'hud-v groom')
+    setText('hud-hunger', hud.hungerDrive.toFixed(2), 'hud-v hunger')
+    setText('hud-thirst', hud.thirstDrive.toFixed(2), 'hud-v thirst')
+    setText('hud-sleep', hud.sleepDrive.toFixed(2), hud.sleep ? 'hud-v sleep' : 'hud-v dim')
+    setText('hud-clock', hud.clockDrive.toFixed(2), 'hud-v clock')
     if (hud.backward) setText('hud-mdn', 'backward', 'hud-v mdn')
     else setText('hud-mdn', '—', 'hud-v dim')
     setText('hud-loom', `L ${hud.loomL.toFixed(2)}  R ${hud.loomR.toFixed(2)}`, 'hud-v loom')

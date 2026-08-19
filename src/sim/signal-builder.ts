@@ -24,6 +24,11 @@ export class SignalBuilder {
     s.walkDrive = clamp(sim.rateFwd / 10, 0, 1.3)
     s.groomDrive = sim.rateGroom / 8
     s.wingDrive = clamp(sim.rateEscW / 10, 0, 1.3)
+    s.hungerDrive = clamp(sim.rateHunger / 10, 0, 1)
+    s.thirstDrive = clamp(sim.rateThirst / 10, 0, 1)
+    s.sleepDrive = clamp(sim.rateSleep / 10, 0, 1)
+    s.clockDrive = clamp(sim.rateClock / 10, 0, 1)
+    s.sleep = s.sleepDrive > 0.22
     s.arousal = clamp(sim.ratePop / 20, 0, 1)
     return s
   }

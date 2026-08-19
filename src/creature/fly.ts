@@ -26,6 +26,15 @@ export function clampf(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v))
 }
 
+/**
+ * Walk competitor. Hunger/thirst only raise explore when loom is quiet;
+ * nervous ≥ 0.3 leaves DNp09 walkDrive alone (loom wins).
+ */
+export function exploreDriveOf(s: BrainSignals): number {
+  if (s.nervous >= 0.3) return s.walkDrive
+  return Math.max(s.walkDrive, s.hungerDrive, s.thirstDrive)
+}
+
 export function angleDiff(from: number, to: number): number {
   let d = (to - from) % (2 * Math.PI)
   if (d > Math.PI) d -= 2 * Math.PI
@@ -417,17 +426,30 @@ export class Fly implements Creature {
       this.dartTimer = this.rnd(0.4, 0.9)
       this.dartCooldown = 1.2
     }
+    const needWins = s.hungerDrive > 0.5 || s.thirstDrive > 0.5
+    const exploreDrive = exploreDriveOf(s)
     if (this.state !== 'walking' || this.dartTimer === 0) {
-      if (this.state !== 'grooming' && s.groomDrive > 0.5 && s.nervous < 0.3 && this.stateAge > 0.4) {
+      if (
+        !needWins &&
+        this.state !== 'grooming' &&
+        s.groomDrive > 0.5 &&
+        s.nervous < 0.3 &&
+        this.stateAge > 0.4
+      ) {
         this.setState('grooming')
       } else if (this.state === 'grooming' && s.groomDrive < 0.3 && this.stateAge > 0.6) {
         this.setState('idle')
       }
     }
-    if (this.state === 'idle' && s.walkDrive > 0.22 && this.stateAge > 0.4) {
+    if (this.state === 'idle' && exploreDrive > 0.22 && this.stateAge >= 0.4) {
       this.setState('walking')
       this.heading += this.rnd(-0.8, 0.8)
-    } else if (this.state === 'walking' && this.dartTimer === 0 && s.walkDrive < 0.08 && this.stateAge > 0.5) {
+    } else if (
+      this.state === 'walking' &&
+      this.dartTimer === 0 &&
+      exploreDrive < 0.08 &&
+      this.stateAge > 0.5
+    ) {
       this.setState('idle')
       this.speed = 0
     }
@@ -440,10 +462,17 @@ export class Fly implements Creature {
     }
     if (this.state === 'walking') {
       if (this.dartTimer === 0 && this.backwardTimer === 0) {
-        const target = (14 + s.walkDrive * 55) * s.tempo
+        const target = (14 + exploreDrive * 55) * s.tempo
         this.speed += (target - this.speed) * Math.min(1, 3 * dt)
       }
-      if (this.ledge == null) this.heading += s.turnBias * dt
+      if (this.ledge == null) {
+        this.heading += s.turnBias * dt
+        // High thirst: screen-edge water. Low thirst (< 0.08) never reaches this.
+        if (this.dartTimer === 0 && s.thirstDrive > 0.22 && s.nervous < 0.3) {
+          const towardEdge = this.position.x >= 0 ? 0 : Math.PI
+          this.heading += angleDiff(this.heading, towardEdge) * Math.min(1, 1.8 * dt)
+        }
+      }
     }
     const flightChance = s.arousal > 0.5 ? 0.6 : 0.005
     if (this.state === 'walking' && this.rnd(0, 1) < flightChance * dt) {

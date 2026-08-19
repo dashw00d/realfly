@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { circadianActivity } from '../shared/circadian'
 import {
+  clockInFromHour,
   environmentTempo,
   isSleepy,
   simNeuromodulation,
+  sleepInFromIdle,
+  stepDepletion,
   tempoFromSpeedLimit,
   tempoFromThermalState,
   typingFromIdle,
@@ -52,6 +55,16 @@ describe('idle → sleep + typing', () => {
     expect(isSleepy(1801, 12)).toBe(true)
   })
 
+  it('sleepIn ramps with idle+hour; clockIn is the circadian curve', () => {
+    expect(sleepInFromIdle(0, 23)).toBe(0)
+    expect(sleepInFromIdle(300, 23)).toBeCloseTo(0.5, 5)
+    expect(sleepInFromIdle(600, 23)).toBe(1)
+    expect(sleepInFromIdle(600, 12)).toBeCloseTo(600 / 1800, 5)
+    expect(sleepInFromIdle(1800, 12)).toBe(1)
+    expect(clockInFromHour(9)).toBe(circadianActivity(9))
+    expect(clockInFromHour(14)).toBe(circadianActivity(14))
+  })
+
   it('typing uses idle-time, never which keys', () => {
     const on = typingFromIdle(0.1, 0)
     expect(on).toBeCloseTo(0.15, 5)
@@ -71,6 +84,34 @@ describe('sim neuromodulation', () => {
     const { activityScale, sensoryGate } = simNeuromodulation(1, true)
     expect(activityScale).toBeCloseTo(0.75, 5)
     expect(sensoryGate).toBe(0.55)
+  })
+
+  it('depletion saturates in hours, not seconds; hot machine drains slightly faster', () => {
+    const hour = stepDepletion(0, 0, 3600, 1)
+    expect(hour.hunger).toBeCloseTo(1 / 6, 5)
+    expect(hour.thirst).toBeCloseTo(1 / 4, 5)
+    const sat = stepDepletion(0, 0, 6 * 3600, 1)
+    expect(sat.hunger).toBe(1)
+    expect(sat.thirst).toBe(1)
+    const cool = stepDepletion(0, 0, 3600, 1)
+    const hotHunger = stepDepletion(0, 0, 3600, 1.15)
+    const hotBoth = stepDepletion(0, 0, 3600, 1.25)
+    expect(hotHunger.hunger).toBeCloseTo(cool.hunger * 1.05, 5)
+    expect(hotHunger.thirst).toBeCloseTo(cool.thirst, 5)
+    expect(hotBoth.thirst).toBeCloseTo(cool.thirst * 1.1, 5)
+    const tick = stepDepletion(0, 0, 1 / 60, 1)
+    expect(tick.hunger).toBeLessThan(1e-4)
+    // Hot drain is a rate. 60 ticks at 1.5 must not explode (1.05^60 would).
+    let h = 0.1
+    let t = 0.1
+    for (let i = 0; i < 60; i++) {
+      const n = stepDepletion(h, t, 1 / 60, 1.5)
+      h = n.hunger
+      t = n.thirst
+    }
+    expect(h).toBeLessThan(0.11)
+    expect(t).toBeLessThan(0.11)
+    expect(stepDepletion(0.4, 0.4, 0, 1.5)).toEqual({ hunger: 0.4, thirst: 0.4 })
   })
 
   it('circadian control points still match Environment.swift', () => {

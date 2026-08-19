@@ -1,9 +1,9 @@
 /**
  * Port of vendor/desktop-fly/main.swift `runBehaviorTest()`.
- * 7 stim scenarios (SignalBuilder + real LIFSim) + 10 bodyChecks.
+ * Upstream stim/body checks plus hunger/thirst probes. Do not weaken predicates.
  */
 import { beforeAll, describe, expect, it } from 'vitest'
-import { FLY_SCALE, Fly, type FlyState } from '../creature/fly'
+import { angleDiff, exploreDriveOf, FLY_SCALE, Fly, type FlyState } from '../creature/fly'
 import { defaultBrainSignals, type BrainSignals } from '../shared/brain-signals'
 import type { World } from '../shared/creature'
 import { circadianActivity } from '../shared/circadian'
@@ -134,6 +134,31 @@ describe('Fly --behaviortest', () => {
     (sim) => sim.stimulate(sim.sens, 0.45, 150),
     0.8,
     (fly) => fly.state === 'flying',
+    (fly) => `state=${fly.state}`,
+  )
+
+  scenario(
+    'hunger stim -> walks (explore, not takeoff)',
+    // Command-sized cluster (Hugin n=4). All 34 NSCs at once inflate ratePop → arousal takeoff.
+    (sim) => sim.stimulate(sim.hunger.slice(0, 4), 0.25, 1200),
+    1.5,
+    (fly) => fly.state === 'walking' && fly.speed > 20 && fly.speed < 100,
+    (fly) => `state=${fly.state} speed=${Math.trunc(fly.speed)}`,
+  )
+
+  scenario(
+    'thirst stim -> walks (explore, not takeoff)',
+    (sim) => sim.stimulate(sim.thirst, 0.25, 1200),
+    1.5,
+    (fly) => fly.state === 'walking' && fly.speed > 20 && fly.speed < 100,
+    (fly) => `state=${fly.state} speed=${Math.trunc(fly.speed)}`,
+  )
+
+  scenario(
+    'sleepn stim -> sleeping',
+    (sim) => sim.stimulate(sim.sleepn, 0.25, 600),
+    1.2,
+    (fly) => fly.state === 'sleeping',
     (fly) => `state=${fly.state}`,
   )
 
@@ -358,6 +383,116 @@ describe('Fly --behaviortest', () => {
     const detail = `3h ${night.toFixed(2)}, 9h ${dawn.toFixed(2)}, 14h ${siesta.toFixed(2)}, 18h ${dusk.toFixed(2)}`
     console.log(
       `${ok ? 'PASS' : 'FAIL'}  circadian curve: siesta + night dips, dawn/dusk peaks: ${detail}`,
+    )
+    expect(ok, detail).toBe(true)
+  })
+
+  it('exploreDrive: hunger/thirst compete only when nervous is low', () => {
+    expect(exploreDriveOf(walkSignals({ walkDrive: 0.1, hungerDrive: 0.6, nervous: 0 }))).toBeCloseTo(0.6)
+    expect(exploreDriveOf(walkSignals({ walkDrive: 0.1, thirstDrive: 0.5, nervous: 0.2 }))).toBeCloseTo(0.5)
+    expect(exploreDriveOf(walkSignals({ walkDrive: 0.1, hungerDrive: 0.8, nervous: 0.3 }))).toBeCloseTo(0.1)
+  })
+
+  it('high hunger + low nervous walks; satiety does not zero walkDrive', () => {
+    const hungry = new Fly({ x: 0, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    hungry.state = 'idle'
+    hungry.speed = 0
+    const hungerSig = defaultBrainSignals()
+    hungerSig.hungerDrive = 0.6
+    const w = world()
+    for (let i = 0; i < 40; i++) hungry.update(dt, w, hungerSig)
+    const hungerWalk = stateOf(hungry) === 'walking'
+
+    const sated = new Fly({ x: 0, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    sated.state = 'idle'
+    sated.speed = 0
+    const walk = walkSignals({ hungerDrive: 0, thirstDrive: 0, walkDrive: 0.6 })
+    for (let i = 0; i < 40; i++) sated.update(dt, w, walk)
+    const satietyWalk = stateOf(sated) === 'walking'
+
+    const ok = hungerWalk && satietyWalk
+    const detail = `hunger ${stateOf(hungry)} satiety ${stateOf(sated)}`
+    console.log(`${ok ? 'PASS' : 'FAIL'}  high hunger + low nervous walks; satiety does not zero walkDrive: ${detail}`)
+    expect(ok, detail).toBe(true)
+  })
+
+  it('high hunger or thirst skips groom enter; low need still grooms', () => {
+    const w = world()
+    const hungry = new Fly({ x: 0, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    hungry.state = 'idle'
+    hungry.speed = 0
+    const need = defaultBrainSignals()
+    need.groomDrive = 0.8
+    need.hungerDrive = 0.7
+    for (let i = 0; i < 40; i++) hungry.update(dt, w, need)
+
+    const calm = new Fly({ x: 0, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    calm.state = 'idle'
+    calm.speed = 0
+    const groom = defaultBrainSignals()
+    groom.groomDrive = 0.8
+    for (let i = 0; i < 40; i++) calm.update(dt, w, groom)
+
+    const ok = stateOf(hungry) !== 'grooming' && stateOf(calm) === 'grooming'
+    const detail = `need ${stateOf(hungry)} calm ${stateOf(calm)}`
+    console.log(
+      `${ok ? 'PASS' : 'FAIL'}  high hunger or thirst skips groom enter; low need still grooms: ${detail}`,
+    )
+    expect(ok, detail).toBe(true)
+  })
+
+  it('high thirst walks toward screen edge; low thirst ignores', () => {
+    const w = world()
+    const thirsty = new Fly({ x: 180, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    thirsty.state = 'walking'
+    thirsty.speed = 30
+    thirsty.heading = Math.PI
+    const hi = walkSignals({ thirstDrive: 0.6, nervous: 0, walkDrive: 0.4 })
+    for (let i = 0; i < 180; i++) thirsty.update(dt, w, hi)
+
+    const sated = new Fly({ x: 180, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    sated.state = 'walking'
+    sated.speed = 30
+    sated.heading = Math.PI
+    const lo = walkSignals({ thirstDrive: 0.04, nervous: 0, walkDrive: 0.4 })
+    for (let i = 0; i < 180; i++) sated.update(dt, w, lo)
+
+    const thirstyErr = Math.abs(angleDiff(thirsty.heading, 0))
+    const satedErr = Math.abs(angleDiff(sated.heading, 0))
+    const ok = thirstyErr < 0.4 && thirstyErr < satedErr - 0.4
+    const detail = `thirsty err ${thirstyErr.toFixed(2)} sated err ${satedErr.toFixed(2)}`
+    console.log(`${ok ? 'PASS' : 'FAIL'}  high thirst walks toward screen edge; low thirst ignores: ${detail}`)
+    expect(ok, detail).toBe(true)
+  })
+
+  it('escape, sleep, and MDN still win over hunger from grounded states', () => {
+    const w = world()
+    const esc = new Fly({ x: 0, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    esc.state = 'idle'
+    const escSig = defaultBrainSignals()
+    escSig.escape = true
+    escSig.hungerDrive = 1
+    esc.update(dt, w, escSig)
+
+    const slp = new Fly({ x: 0, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    slp.state = 'idle'
+    const sleepSig = defaultBrainSignals()
+    sleepSig.sleep = true
+    sleepSig.hungerDrive = 1
+    for (let i = 0; i < 10; i++) slp.update(dt, w, sleepSig)
+
+    const mdn = new Fly({ x: 0, y: 0 }, 'fly-1', createRng(TEST_SEED))
+    mdn.state = 'idle'
+    mdn.speed = 0
+    const mdnSig = defaultBrainSignals()
+    mdnSig.backward = true
+    mdnSig.hungerDrive = 0.7
+    mdn.update(dt, w, mdnSig)
+
+    const ok = stateOf(esc) === 'flying' && stateOf(slp) === 'sleeping' && mdn.backwardTimer > 0
+    const detail = `escape ${stateOf(esc)} sleep ${stateOf(slp)} mdn ${mdn.backwardTimer.toFixed(2)}`
+    console.log(
+      `${ok ? 'PASS' : 'FAIL'}  escape, sleep, and MDN still win over hunger from grounded states: ${detail}`,
     )
     expect(ok, detail).toBe(true)
   })

@@ -43,6 +43,10 @@ export type BrainHudSnapshot = {
   loomR: number
   walkDrive: number
   groomDrive: number
+  hungerDrive: number
+  thirstDrive: number
+  sleepDrive: number
+  clockDrive: number
   backward: boolean
   turnBias: number
   nervous: number
@@ -79,6 +83,14 @@ export type SimStepInput = {
   airPuff: number
   activityScale: number
   sensoryGate: number
+  /** Desktop deprivation 0..1 onto hunger NSCs. Default 0. Never a LIF baseline scale. */
+  hungerIn?: number
+  /** Desktop dehydration 0..1 onto thirst cores. Default 0. */
+  thirstIn?: number
+  /** Idle+hour 0..1 onto sleepn. Default 0. Not a LIF baseline scale. */
+  sleepIn?: number
+  /** Hour 0..1 (circadianActivity) onto clock LNvs. Default 0. */
+  clockIn?: number
 }
 
 export type SimStimulateInput = {

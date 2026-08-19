@@ -32,6 +32,17 @@ CORE_TYPES = {          # primary_type -> role
     "DNp02": "escw",    # loom-responsive escape-maneuver DNs (wing responses)
     "DNp04": "escw",
     "DNp11": "escw",
+    "SEZ_NSC_Hugin": "hunger",  # SEZ Hugin feeding peptide
+    "m_NSC_DH44": "hunger",     # PI DH44 metabolic NSC
+    "m_NSC_DILP": "hunger",     # insulin-producing cells
+    "m_NSC_DMS": "hunger",      # PI myosuppressin
+    "AstA1": "thirst",          # allatostatin-A command
+    "BiT": "thirst",            # water projection neuron
+    "SEZ_NSC_CAPA": "thirst",   # SEZ CAPA osmoregulation
+    "FB6A": "sleepn",           # R23E10 dFB sleep-promoting
+    "FB2B": "sleepn",           # ExFl1 analog (SS57264)
+    "s-LNv": "clock",           # small PDF LNv
+    "l-LNv": "clock",           # large PDF LNv
 }
 NT_SIGN = {"ACH": 1.0, "GABA": -1.0, "GLUT": -1.0, "DA": 0.5, "SER": 0.5, "OCT": 0.5}
 MAX_PARTNERS = 330
@@ -104,7 +115,7 @@ def take(cands, k):
             break
 # every small command population gets its own strongest partners, so no DN
 # ends up driven by noise alone
-for role in ("gf", "dna01", "dna02", "dnp09", "dng11", "mdn", "escw"):
+for role in ("gf", "dna01", "dna02", "dnp09", "dng11", "mdn", "escw", "hunger", "thirst", "sleepn", "clock"):
     take([r for r, s in sorted(strength_by_role[role].items(), key=lambda kv: -kv[1])], 10)
 # reserved slots for body->brain feedback targets
 take([r for r in ranked if klass[r][0] == "ascending"], 24)
@@ -173,7 +184,7 @@ loom_ids = {member_idx[r] for r, role in core.items() if role in ("lc4", "lplc2"
 loom_gf = [e for e in edges if e[0] in loom_ids and e[1] in gf_ids]
 print(f"sanity: direct loom->GF edges: {len(loom_gf)}, total syn: {sum(abs(e[2]) for e in loom_gf):.0f}")
 role_of = {member_idx[r]: role for r, role in core.items()}
-for role in ("gf", "dna01", "dna02", "dnp09", "dng11", "mdn", "escw"):
+for role in ("gf", "dna01", "dna02", "dnp09", "dng11", "mdn", "escw", "hunger", "thirst", "sleepn", "clock"):
     ids = {i for i, r in role_of.items() if r == role}
     indeg = sum(abs(e[2]) for e in edges if e[1] in ids)
     print(f"  in-circuit drive onto {role}: {indeg:.0f} syn")

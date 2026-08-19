@@ -12,7 +12,7 @@ import { clampf, CursorLoom, WindowLoom, windowLoomStrength, type LoomFly } from
 import type { DesktopEnvironment } from './desktop-env'
 import { listDisplays, type DisplayInfo } from './displays'
 import { WindowSense } from './ecology'
-import { readEnvironmentTempo, sampleAmbient, watchSpeedLimit } from './environment'
+import { readEnvironmentTempo, sampleAmbient, stepDepletion, watchSpeedLimit } from './environment'
 import { attachTapInput } from './input'
 import type { OverlayManager } from './overlay-manager'
 import { createSimClient, type SimClient } from './sim-client'
@@ -66,6 +66,10 @@ function hudFromSignals(
     loomR,
     walkDrive: signals?.walkDrive ?? 0,
     groomDrive: signals?.groomDrive ?? 0,
+    hungerDrive: signals?.hungerDrive ?? 0,
+    thirstDrive: signals?.thirstDrive ?? 0,
+    sleepDrive: signals?.sleepDrive ?? 0,
+    clockDrive: signals?.clockDrive ?? 0,
     backward: signals?.backward ?? false,
     turnBias: signals?.turnBias ?? 0,
     nervous: signals?.nervous ?? 0,
@@ -104,6 +108,8 @@ export function createWorldLoop(opts: {
   let lastTick = Date.now()
   let inFlight = false
   let simReady = false
+  let hunger = 0
+  let thirst = 0
 
   const unwatchSpeed = watchSpeedLimit()
 
@@ -206,8 +212,16 @@ export function createWorldLoop(opts: {
 
       const idle = desktop.getIdleSeconds()
       const tempo = readEnvironmentTempo(desktop.getThermalFactor())
-      const amb = sampleAmbient({ idleSeconds: idle, typing: typingLevel, tempo })
+      const amb = sampleAmbient({
+        idleSeconds: idle,
+        typing: typingLevel,
+        tempo,
+        circuitSleep: lastSignals?.sleep === true,
+      })
       typingLevel = amb.typing
+      const needs = stepDepletion(hunger, thirst, dt, amb.tempo)
+      hunger = needs.hunger
+      thirst = needs.thirst
 
       const pose = lastPoses[0] ?? { x: 0, y: 0, heading: 0, walkingIntensity: 0, gaitPhase: 0, state: 'idle' }
       const sensory = cursorLoom.compute(pose, mouse, dt)
@@ -234,11 +248,14 @@ export function createWorldLoop(opts: {
             airPuff,
             activityScale: amb.activityScale,
             sensoryGate: amb.sensoryGate,
+            hungerIn: hunger,
+            thirstIn: thirst,
+            sleepIn: amb.sleepIn,
+            clockIn: amb.clockIn,
           })
           if (result) {
             signals = result.signals
             signals.tempo = amb.tempo
-            signals.sleep = amb.sleepy
             lastSignals = signals
             if (result.spikes.length > 0 && brain.isVisible()) {
               brain.sendSpikes(result.spikes)

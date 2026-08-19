@@ -49,6 +49,14 @@ function roleColor(role: string): [number, number, number, number] {
       return [1.0, 0.35, 0.25, 1]
     case 'gf':
       return [1.0, 0.95, 0.4, 1]
+    case 'hunger':
+      return [1.0, 0.72, 0.18, 1]
+    case 'thirst':
+      return [0.28, 0.52, 1.0, 1]
+    case 'sleepn':
+      return [0.55, 0.42, 0.95, 1]
+    case 'clock':
+      return [0.95, 0.85, 0.25, 1]
     default:
       return [0.45, 0.45, 0.5, 1]
   }
@@ -83,7 +91,7 @@ function dist3(a: [number, number, number], b: [number, number, number]): number
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 }
 
-/** PORT_CONTRACT click-to-body map: gf=escape, dng11=groom, dnp09=walk, mdn=backward, dna=steer, lc/lplc2=loom/nervous. */
+/** Click-to-body map: gf=escape, dng11=groom, dnp09=walk, mdn=backward, dna=steer, lc/lplc2=loom/nervous, hunger=forage, thirst=water, sleepn=sleep, clock=circadian. */
 export const ROLE_BODY: Readonly<Record<string, string>> = {
   gf: 'escape',
   dng11: 'groom',
@@ -95,6 +103,10 @@ export const ROLE_BODY: Readonly<Record<string, string>> = {
   lc4: 'loom/nervous',
   lplc2: 'loom/nervous',
   escw: 'wing',
+  hunger: 'forage',
+  thirst: 'water',
+  sleepn: 'sleep',
+  clock: 'circadian',
 }
 
 export function roleBody(role: string): string {
@@ -151,6 +163,14 @@ export function regionName(neurons: CircuitNeuronViz[], picked: number[]): strin
       return '⚡ Escape-wing DNs (DNp02/04/11)'
     case 'mdn':
       return '⚡ Moonwalker neurons (MDN)'
+    case 'hunger':
+      return `⚡ Hunger / forage (Hugin/DH44/DILP)${sideSuffix(major)}`
+    case 'thirst':
+      return `⚡ Thirst / water (AstA1/BiT/CAPA)${sideSuffix(major)}`
+    case 'sleepn':
+      return `⚡ Sleep (FB6A/FB2B dFB)${sideSuffix(major)}`
+    case 'clock':
+      return `⚡ Clock (s-LNv/l-LNv)${sideSuffix(major)}`
     default: {
       const firstOther = picked.find((i) => neurons[i]?.role === 'other') ?? picked[0]!
       let t = neurons[firstOther]?.type ?? 'central'

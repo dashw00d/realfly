@@ -79,7 +79,8 @@ Baselines (command DNs are deterministic; never random per-side):
 |---|---|
 | `other` | `random(0.010...0.070)` |
 | `lc4`, `lplc2` | `0.004` |
-| `dna01`, `dna02`, `mdn`, `dng11`, `escw` | `0.036` |
+| `dna01`, `dna02`, `mdn`, `dng11`, `escw`, `hunger`, `thirst` | `0.036` |
+| `sleepn`, `clock` | `0.004` |
 | `dnp09` | `0.038` |
 | `gf` (default) | `0.002` |
 
@@ -105,12 +106,25 @@ walkDrive = clamp(rateFwd / 10, 0, 1.3)
 groomDrive = rateGroom / 8                       // unclamped
 wingDrive = clamp(rateEscW / 10, 0, 1.3)
 arousal   = clamp(ratePop / 20, 0, 1)
+hungerDrive = clamp(rateHunger / 10, 0, 1)       // expansion; always clamp
+thirstDrive = clamp(rateThirst / 10, 0, 1)
+sleepDrive = clamp(rateSleep / 10, 0, 1)         // expansion; always clamp
+clockDrive = clamp(rateClock / 10, 0, 1)
+sleep      = sleepDrive > 0.22                   // from sleepn rate, not idle>600
 ```
+
+`hungerIn` / `thirstIn` (0..1) inject like air puff: `* 0.12 * sensoryGate` onto
+the `hunger` / `thirst` groups. Do not scale LIF baselines by those inputs.
+
+`sleepIn` / `clockIn` (0..1) inject idle+hour onto `sleepn` / `clock` at `* 0.12`
+**without** sensoryGate (the gate is a consequence of sleepn firing).
 
 Live loop then overlays environment (not inside `SignalBuilder`):
 
 - `s.tempo = environmentTempo` (was `thermalTempo`)
-- `s.sleep = sleepy`
+- `s.sleep` is **not** overwritten — it comes from sleepn rate
+- `activityScale` stays compressed toward 1: `(1 - (1-activity)*0.35) * (sleep ? 0.75 : 1)`
+  using the hour curve for `activity` and **circuit** sleep for the 0.75 / `sensoryGate 0.55`
 
 `--behaviortest` stim scenarios use `SignalBuilder` only (tempo defaults to 1,
 sleep defaults to false).
@@ -133,6 +147,48 @@ sleep defaults to false).
 
 `--simtest` walk-on uses the same walk threshold: `rateFwd / 10 > 0.22`.
 Groom-on: `rateGroom / 8 > 0.5`.
+
+### Hunger / thirst (this repo; not upstream Swift)
+
+Do not retune the LIF constants above. New-role baselines are **0.036**.
+Injection copies air puff (`* 0.12 * sensoryGate`).
+
+```
+hungerDrive = clamp(rateHunger / 10, 0, 1)
+thirstDrive = clamp(rateThirst / 10, 0, 1)
+exploreDrive = nervous < 0.3 ? max(walkDrive, hungerDrive, thirstDrive) : walkDrive
+```
+
+| trigger | condition | action |
+|---|---|---|
+| hunger/thirst walk enter | idle && `exploreDrive > 0.22` && `stateAge >= 0.4` | walking |
+| hunger/thirst walk exit | walking, no dart, `exploreDrive < 0.08` && `stateAge > 0.5` | idle, speed 0 |
+| walk speed | walking, no dart/back | `target = (14 + exploreDrive * 55) * tempo` |
+| groom suppress | `hungerDrive > 0.5` or `thirstDrive > 0.5` | skip groom enter |
+| thirst heading | walking && `thirstDrive > 0.22` && `nervous < 0.3` | bias toward screen edge (`sign(x)`); ignore if `< 0.08` |
+
+Satiety must not zero `walkDrive` or scale LIF baselines. Escape, dart,
+sleep, and MDN keep first-wins order. No `foraging` FlyState.
+
+### Sleep / clock (this repo; not upstream Swift)
+
+Do not retune LIF constants. `sleepn` / `clock` baselines are **0.004**
+(quiet until idle+hour; 0.036-class would sleep at rest).
+Desktop idle+hour is transduction onto those cells (like loom onto LC4).
+`BrainSignals.sleep` comes from `sleepDrive > 0.22`, not `if idle > 600`.
+
+```
+sleepIn  = min(1, max(night ? idle/600 : 0, idle/1800))
+clockIn  = circadianActivity(hour)
+sleepDrive = clamp(rateSleep / 10, 0, 1)
+clockDrive = clamp(rateClock / 10, 0, 1)
+sleep = sleepDrive > 0.22
+```
+
+Clock chemical outs in v783 are tiny (~60 syn, PDF is peptide). ClockDrive is
+HUD + evidence the cells see hour; `activityScale` is still the compressed
+hour curve, never a linear scale of clockDrive. Circuit sleep applies ×0.75
+and `sensoryGate = 0.55`. GF must still fire on loom through that gate.
 
 ---
 

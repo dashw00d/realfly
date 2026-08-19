@@ -19,9 +19,17 @@ export interface BrainSignals {
   wingDrive: number
   /** Whole-population activity, ~0..1. */
   arousal: number
+  /** Hunger NSC population rate, clamped 0..1. Circuit, not a wall-clock state. */
+  hungerDrive: number
+  /** Thirst command population rate, clamped 0..1. Circuit, not a wall-clock state. */
+  thirstDrive: number
+  /** dFB sleepn population rate, clamped 0..1. Circuit, not idle>600. */
+  sleepDrive: number
+  /** PDF LNv clock population rate, clamped 0..1. Not a body slider. */
+  clockDrive: number
   /** environmentTempo (was thermalTempo). Default 1. */
   tempo: number
-  /** Circadian + idle → sleep-like state. */
+  /** Sleep from sleepn rate (sleepDrive > 0.22). */
   sleep: boolean
 }
 
@@ -35,6 +43,10 @@ export const BRAIN_SIGNAL_KEYS = [
   'groomDrive',
   'wingDrive',
   'arousal',
+  'hungerDrive',
+  'thirstDrive',
+  'sleepDrive',
+  'clockDrive',
   'tempo',
   'sleep',
 ] as const satisfies readonly (keyof BrainSignals)[]
@@ -49,6 +61,10 @@ export function defaultBrainSignals(): BrainSignals {
     groomDrive: 0,
     wingDrive: 0,
     arousal: 0,
+    hungerDrive: 0,
+    thirstDrive: 0,
+    sleepDrive: 0,
+    clockDrive: 0,
     tempo: 1,
     sleep: false,
   }

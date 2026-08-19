@@ -56,6 +56,10 @@ export class SimSession {
         groom: sim.groom.length,
         escw: sim.escw.length,
         ascend: sim.ascend.length,
+        hunger: sim.hunger.length,
+        thirst: sim.thirst.length,
+        sleepn: sim.sleepn.length,
+        clock: sim.clock.length,
       },
     }
   }
@@ -69,6 +73,10 @@ export class SimSession {
     sim.airPuff = input.airPuff
     sim.activityScale = input.activityScale
     sim.sensoryGate = input.sensoryGate
+    sim.hungerIn = input.hungerIn ?? 0
+    sim.thirstIn = input.thirstIn ?? 0
+    sim.sleepIn = input.sleepIn ?? 0
+    sim.clockIn = input.clockIn ?? 0
     sim.step(input.ms)
     const dt = input.ms / 1000
     const signals = this.builder.make(sim, dt)
@@ -115,6 +123,14 @@ function resolveIndices(sim: LIFSim, input: SimStimulateInput): number[] {
       return sim.loomLeft
     case 'loomRight':
       return sim.loomRight
+    case 'hunger':
+      return sim.hunger
+    case 'thirst':
+      return sim.thirst
+    case 'sleepn':
+      return sim.sleepn
+    case 'clock':
+      return sim.clock
     default:
       return []
   }
