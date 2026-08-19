@@ -25,7 +25,35 @@ export type DisplaySnapshot = {
   scaleFactor: number
 }
 
-/** 60 Hz snapshot main → overlay. Only fly #1 gets `signals`; extras are autonomous. */
+/** Delayed noisy copy of fly #1 for extras. Not a second LIF circuit. */
+export type ExtraMood = {
+  walkDrive: number
+  nervous: number
+  escape: boolean
+  groomDrive: number
+  heading: number
+}
+
+/** Compact HUD payload for the brain window (and overlay consumers of `onHud`). */
+export type BrainHudSnapshot = {
+  gfSpike: boolean
+  gfSilent: boolean
+  rateLoom: number
+  loomL: number
+  loomR: number
+  walkDrive: number
+  groomDrive: number
+  backward: boolean
+  turnBias: number
+  nervous: number
+  arousal: number
+  wingDrive: number
+  tempo: number
+  sleep: boolean
+  lastStim?: { role: string; body: string }
+}
+
+/** 60 Hz snapshot main → overlay. Only fly #1 gets `signals`; extras use `extrasMood`. */
 export type WorldFrame = {
   dt: number
   displayId: number
@@ -37,6 +65,9 @@ export type WorldFrame = {
   flyCount: number
   scareSeq: number
   poses: FlyPose[]
+  /** 0..1 typing intensity; overlay can twitch the abdomen. */
+  typing?: number
+  extrasMood?: ExtraMood
 }
 
 export type SimStepInput = {

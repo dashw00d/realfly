@@ -11,31 +11,119 @@
         height: 100%;
         background: #000;
         overflow: hidden;
+        user-select: none;
       }
-      canvas {
+      canvas#brain {
         display: block;
         width: 100%;
         height: 100%;
         cursor: crosshair;
       }
+      #brain-hud {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        right: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 4px 6px 8px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.12) 85%, transparent);
+        color: #c8d0dc;
+        font: 10px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        letter-spacing: 0.01em;
+        pointer-events: none;
+        z-index: 2;
+      }
+      .hud-col {
+        display: grid;
+        gap: 1px 0;
+        min-width: 0;
+      }
+      .hud-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+      }
+      .hud-k {
+        color: #7a8494;
+        text-transform: uppercase;
+        font-size: 9px;
+      }
+      .hud-v {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        white-space: nowrap;
+      }
+      .hud-v.hot {
+        color: #ffe66a;
+      }
+      .hud-v.dim {
+        color: #5c6570;
+      }
+      .hud-v.gf {
+        color: #ffe66a;
+      }
+      .hud-v.lc {
+        color: #4dd9ff;
+      }
+      .hud-v.walk {
+        color: #40ff59;
+      }
+      .hud-v.groom {
+        color: #c08cff;
+      }
+      .hud-v.mdn {
+        color: #ff4dc8;
+      }
+      .hud-v.loom {
+        color: #4dd9ff;
+      }
+      #spark {
+        display: block;
+        width: 140px;
+        height: 32px;
+        flex: 0 0 auto;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+      }
       #stim-label {
         position: absolute;
         left: 50%;
-        bottom: 10px;
+        bottom: 8px;
         transform: translateX(-50%);
         padding: 4px 10px;
         border-radius: 6px;
         background: rgba(0, 0, 0, 0.55);
         color: #f2f2f2;
-        font: 500 11px/1.4 system-ui, sans-serif;
-        white-space: nowrap;
+        font: 500 11px/1.35 system-ui, sans-serif;
+        white-space: pre;
+        text-align: center;
         pointer-events: none;
+        z-index: 3;
       }
     </style>
   </head>
   <body>
     <canvas id="brain"></canvas>
+    <div id="brain-hud">
+      <div class="hud-col">
+        <div class="hud-row"><span class="hud-k">GF</span><span id="hud-gf" class="hud-v dim">silent</span></div>
+        <div class="hud-row"><span class="hud-k">LC4/LPLC2</span><span id="hud-lc" class="hud-v lc">0.0 Hz</span></div>
+        <div class="hud-row"><span class="hud-k">walk</span><span id="hud-walk" class="hud-v walk">0.00</span></div>
+        <div class="hud-row"><span class="hud-k">groom</span><span id="hud-groom" class="hud-v groom">0.00</span></div>
+        <div class="hud-row"><span class="hud-k">MDN</span><span id="hud-mdn" class="hud-v dim">—</span></div>
+        <div class="hud-row"><span class="hud-k">loom</span><span id="hud-loom" class="hud-v loom">L 0.00  R 0.00</span></div>
+        <div class="hud-row"><span class="hud-k">stim</span><span id="hud-stim" class="hud-v dim">—</span></div>
+      </div>
+      <canvas id="spark" width="140" height="32" aria-label="GF spikes vs loom"></canvas>
+    </div>
     <div id="stim-label" hidden></div>
     <script type="module" src="./brain.js"></script>
   </body>
 </html>
+

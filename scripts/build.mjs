@@ -1,5 +1,5 @@
 import * as esbuild from 'esbuild'
-import { cpSync, existsSync, mkdirSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -67,4 +67,14 @@ const assets = join(root, 'assets')
 if (existsSync(assets)) {
   mkdirSync(join(dist, 'assets'), { recursive: true })
   cpSync(assets, join(dist, 'assets'), { recursive: true })
+}
+
+const nativeSrc = join(root, 'native/desktop-env')
+const nativeDest = join(dist, 'native/desktop-env')
+if (existsSync(nativeSrc)) {
+  mkdirSync(nativeDest, { recursive: true })
+  for (const name of readdirSync(nativeSrc)) {
+    if (!name.endsWith('.node')) continue
+    cpSync(join(nativeSrc, name), join(nativeDest, name))
+  }
 }

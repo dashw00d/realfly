@@ -3,6 +3,7 @@ import { BrowserWindow, screen } from 'electron'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { BrainHudSnapshot } from '../shared/ipc'
 import type { SpikeEvent } from '../sim/spike-bus'
 
 export type BrainWindow = {
@@ -11,11 +12,13 @@ export type BrainWindow = {
   toggle(): void
   isVisible(): boolean
   sendSpikes(spikes: SpikeEvent[]): void
+  sendHud(hud: BrainHudSnapshot): void
+  capturePage(): Promise<Buffer | null>
   dispose(): void
 }
 
-const BRAIN_WIDTH = 340
-const BRAIN_HEIGHT = 280
+const BRAIN_WIDTH = 420
+const BRAIN_HEIGHT = 360
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -47,6 +50,8 @@ export function createBrainWindow(): BrainWindow {
     y: origin.y,
     width: BRAIN_WIDTH,
     height: BRAIN_HEIGHT,
+    minWidth: 360,
+    minHeight: 300,
     title: 'Fly Brain — FlyWire v783 (click = stimulate)',
     transparent: false,
     frame: true,
@@ -97,6 +102,20 @@ export function createBrainWindow(): BrainWindow {
     sendSpikes: (spikes) => {
       if (win.isDestroyed() || spikes.length === 0) return
       win.webContents.send('spikes', spikes)
+    },
+    sendHud: (hud) => {
+      if (win.isDestroyed()) return
+      win.webContents.send('hud', hud)
+    },
+    capturePage: async () => {
+      if (win.isDestroyed()) return null
+      try {
+        const img = await win.capturePage()
+        if (img.isEmpty()) return null
+        return img.toPNG()
+      } catch {
+        return null
+      }
     },
     dispose: () => {
       allowClose = true

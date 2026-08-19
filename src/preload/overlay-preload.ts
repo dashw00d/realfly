@@ -1,7 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { DisplaySnapshot, FlyPose, WorldFrame } from '../shared/ipc'
+import type { BrainHudSnapshot, DisplaySnapshot, FlyPose, WorldFrame } from '../shared/ipc'
 
 export type OverlayAPI = {
+  onHud(cb: (hud: BrainHudSnapshot) => void): () => void
   onWorld(cb: (frame: WorldFrame) => void): () => void
   onDisplay(cb: (display: DisplaySnapshot) => void): () => void
   onActiveDisplay(cb: (displayId: number) => void): () => void
@@ -22,6 +23,7 @@ function listen<T>(channel: string, cb: (value: T) => void): () => void {
 }
 
 const api: OverlayAPI = {
+  onHud: (cb) => listen<BrainHudSnapshot>('hud', cb),
   onWorld: (cb) => listen<WorldFrame>('world', cb),
   onDisplay: (cb) => listen<DisplaySnapshot>('display', cb),
   onActiveDisplay: (cb) => listen<number>('activeDisplay', cb),

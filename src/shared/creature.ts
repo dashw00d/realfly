@@ -6,6 +6,8 @@ export interface World {
   bounds: { width: number; height: number }
   mouse: Point | null
   ledges: Ledge[]
+  /** 0..1 typing intensity from idle-time (never which keys). */
+  typing?: number
 }
 
 /**

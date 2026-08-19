@@ -38,6 +38,13 @@ export function smoothstep(t: number): number {
   return x * x * (3 - 2 * x)
 }
 
+/** Abdomen Z multiplier. Sleep: slow/deep. Typing > 0.1: faster, smaller twitch. */
+export function abdomenBreathe(time: number, sleeping: boolean, typing: number): number {
+  const rest = sleeping ? 1 + 0.05 * Math.sin(time * 1.1) : 1 + 0.03 * Math.sin(time * 3.0)
+  if (typing <= 0.1) return rest
+  return rest + 0.012 * typing * Math.sin(time * 18)
+}
+
 class Leg {
   angle = 0
   lift = 0
@@ -123,6 +130,8 @@ export class Fly implements Creature {
   stateAge = 0
   terrain: Ledge[] = []
   ledge: Ledge | null = null
+  /** 0..1 substrate vibration from typing (idle-time only). */
+  typing = 0
 
   flightFrom: Point = { x: 0, y: 0 }
   flightTo: Point = { x: 0, y: 0 }
@@ -314,6 +323,7 @@ export class Fly implements Creature {
   update(dt: number, world: World, signals: BrainSignals | null): void {
     // Coordinator / overlay assign terrain each frame; World is the source of truth.
     this.terrain = world.ledges
+    if (world.typing != null) this.typing = world.typing
     this.updateInner(dt, world.bounds, world.mouse, signals)
   }
 
@@ -367,8 +377,7 @@ export class Fly implements Creature {
 
     this.updateLegs(dt)
     this.updateWings(dt)
-    const breathe =
-      this.state === 'sleeping' ? 1 + 0.05 * Math.sin(this.time * 1.1) : 1 + 0.03 * Math.sin(this.time * 3.0)
+    const breathe = abdomenBreathe(this.time, this.state === 'sleeping', this.typing)
     this.model.abdomen.scale = vec3(0.9, 1.5, 0.75 * breathe)
     this.syncNode()
   }

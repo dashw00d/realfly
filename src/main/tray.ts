@@ -1,12 +1,18 @@
 /** Menu-bar / system-tray. Port of AppDelegate.setupStatusItem. */
-import { Menu, Tray, nativeImage, type NativeImage } from 'electron'
+import { Menu, Tray, app, nativeImage, type NativeImage } from 'electron'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { formatDisplayLabel, listDisplays, subscribeDisplayChanges } from './displays'
 
+export type TrayStatus = {
+  gfSpike: boolean
+  loom: number
+}
+
 export type TrayActions = {
   isPaused: () => boolean
+  status: () => TrayStatus
   onTogglePause: () => boolean
   onToggleBrain: () => void
   onEscapeTest: () => void
@@ -78,6 +84,14 @@ function buildMenu(actions: TrayActions): Menu {
     { label: 'Scare Flies', click: () => actions.onScareFlies() },
     { type: 'separator' },
     {
+      label: 'Open at login',
+      type: 'checkbox',
+      checked: app.getLoginItemSettings().openAtLogin,
+      click: (item) => {
+        app.setLoginItemSettings({ openAtLogin: item.checked })
+      },
+    },
+    {
       label: 'Quit',
       role: process.platform === 'darwin' ? 'quit' : undefined,
       click: () => actions.onQuit(),
@@ -85,10 +99,23 @@ function buildMenu(actions: TrayActions): Menu {
   ])
 }
 
+/** Windows has no tray setTitle; tooltip carries GF / loom. */
+export function formatTrayTooltip(status: TrayStatus): string {
+  return `Desktop Fly | GF ${status.gfSpike ? 'SPIKE' : 'silent'} | loom ${status.loom.toFixed(2)}`
+}
+
+const TOOLTIP_MS = 500
+
 export function createTray(actions: TrayActions): TrayHandle {
-  const tray = new Tray(trayIcon())
-  tray.setToolTip('Desktop Fly')
+  const icon = trayIcon()
+  const tray = new Tray(icon)
+  tray.setToolTip(formatTrayTooltip(actions.status()))
   if (process.platform === 'darwin') tray.setTitle('🪰')
+
+  const applyTooltip = (): void => {
+    tray.setToolTip(formatTrayTooltip(actions.status()))
+  }
+  const tooltipTimer = setInterval(applyTooltip, TOOLTIP_MS)
 
   const applyMenu = (): void => {
     tray.setContextMenu(buildMenu(actions))
@@ -121,6 +148,7 @@ export function createTray(actions: TrayActions): TrayHandle {
   return {
     tray,
     dispose: () => {
+      clearInterval(tooltipTimer)
       unsubscribe()
       tray.destroy()
     },

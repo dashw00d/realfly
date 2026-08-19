@@ -5,7 +5,7 @@
 
 import { ipcMain } from 'electron'
 import type { BrainSignals } from '../shared/brain-signals'
-import type { FlyPose, WorldFrame } from '../shared/ipc'
+import type { BrainHudSnapshot, ExtraMood, FlyPose, WorldFrame } from '../shared/ipc'
 import type { Ledge, Point } from '../shared/types'
 import type { BrainWindow } from './brain-window'
 import { clampf, CursorLoom, WindowLoom, windowLoomStrength, type LoomFly } from './cursor-loom'
@@ -19,10 +19,20 @@ import { createSimClient, type SimClient } from './sim-client'
 
 const TICK_MS = 1000 / 60
 const WINDOW_POLL_MS = 700
+/** Extra flies lag fly #1 by ~300 ms (within 200–400 ms). */
+const EXTRAS_MOOD_DELAY_MS = 300
+/** nervous = clamp(rateLoom / 80, 0, 1) — invert for the HUD Hz readout. */
+const LOOM_RATE_SCALE = 80
+
+export type WorldStatus = {
+  gfSpike: boolean
+  loom: number
+}
 
 export type WorldLoop = {
   setPaused(next?: boolean): boolean
   isPaused(): boolean
+  status(): WorldStatus
   escapeTest(): void
   scare(): void
   addFly(): void
@@ -41,6 +51,31 @@ function clampPose(pose: FlyPose, bounds: { width: number; height: number }): Fl
   }
 }
 
+/** HUD from fly #1 signals. gfSpike is consumeGF already latched into escape. */
+function hudFromSignals(
+  signals: BrainSignals | null,
+  loomL: number,
+  loomR: number,
+): BrainHudSnapshot {
+  const gfSpike = signals?.escape ?? false
+  return {
+    gfSpike,
+    gfSilent: !gfSpike,
+    rateLoom: (signals?.nervous ?? 0) * LOOM_RATE_SCALE,
+    loomL,
+    loomR,
+    walkDrive: signals?.walkDrive ?? 0,
+    groomDrive: signals?.groomDrive ?? 0,
+    backward: signals?.backward ?? false,
+    turnBias: signals?.turnBias ?? 0,
+    nervous: signals?.nervous ?? 0,
+    arousal: signals?.arousal ?? 0,
+    wingDrive: signals?.wingDrive ?? 0,
+    tempo: signals?.tempo ?? 1,
+    sleep: signals?.sleep ?? false,
+  }
+}
+
 export function createWorldLoop(opts: {
   desktop: DesktopEnvironment
   overlays: OverlayManager
@@ -56,10 +91,15 @@ export function createWorldLoop(opts: {
   let disposed = false
   let flyCount = 1
   let scareSeq = 0
-  let typing = 0
+  let typingLevel = 0
   let ledges: Ledge[] = []
   let lastPoses: FlyPose[] = []
   let lastSignals: BrainSignals | null = null
+  let lastLoomL = 0
+  let lastLoomR = 0
+  const extrasMoodBuf: Array<ExtraMood & { at: number }> = []
+  let lastExtrasMood: ExtraMood | undefined
+  let loggedWindowLedges = false
   let msAccumulator = 0
   let lastTick = Date.now()
   let inFlight = false
@@ -87,6 +127,31 @@ export function createWorldLoop(opts: {
   const fly1 = (): LoomFly => {
     const p = lastPoses[0]
     return p ? { x: p.x, y: p.y, heading: p.heading } : { x: 0, y: 0, heading: 0 }
+  }
+
+  const extrasMoodFromLeader = (signals: BrainSignals | null, heading: number): ExtraMood => {
+    const now = Date.now()
+    extrasMoodBuf.push({
+      walkDrive: signals?.walkDrive ?? 0,
+      nervous: signals?.nervous ?? 0,
+      escape: signals?.escape ?? false,
+      groomDrive: signals?.groomDrive ?? 0,
+      heading,
+      at: now,
+    })
+    while (extrasMoodBuf.length > 1 && now - extrasMoodBuf[0]!.at > EXTRAS_MOOD_DELAY_MS) {
+      extrasMoodBuf.shift()
+    }
+    const delayed = extrasMoodBuf[0]!
+    const amp = () => (Math.random() * 2 - 1) * 0.08
+    lastExtrasMood = {
+      walkDrive: clampf(delayed.walkDrive + amp(), 0, 1.5),
+      nervous: clampf(delayed.nervous + amp(), 0, 1),
+      escape: delayed.escape,
+      groomDrive: clampf(delayed.groomDrive + amp(), 0, 2),
+      heading: delayed.heading + (Math.random() * 2 - 1) * 0.28,
+    }
+    return lastExtrasMood
   }
 
   const retarget = (): void => {
@@ -121,6 +186,7 @@ export function createWorldLoop(opts: {
       }
 
       if (paused) {
+        brain.sendHud(hudFromSignals(lastSignals, lastLoomL, lastLoomR))
         sendWorld({
           dt: 0,
           displayId: d.id,
@@ -132,14 +198,16 @@ export function createWorldLoop(opts: {
           flyCount,
           scareSeq,
           poses: lastPoses,
+          typing: typingLevel,
+          extrasMood: lastExtrasMood,
         })
         return
       }
 
       const idle = desktop.getIdleSeconds()
       const tempo = readEnvironmentTempo(desktop.getThermalFactor())
-      const amb = sampleAmbient({ idleSeconds: idle, typing, tempo })
-      typing = amb.typing
+      const amb = sampleAmbient({ idleSeconds: idle, typing: typingLevel, tempo })
+      typingLevel = amb.typing
 
       const pose = lastPoses[0] ?? { x: 0, y: 0, heading: 0, walkingIntensity: 0, gaitPhase: 0, state: 'idle' }
       const sensory = cursorLoom.compute(pose, mouse, dt)
@@ -147,7 +215,9 @@ export function createWorldLoop(opts: {
       windowLoom.decay(dt)
       const loomL = Math.max(sensory.l, windowLoom.l)
       const loomR = Math.max(sensory.r, windowLoom.r)
-      const airPuff = Math.max(sensory.puff, typing * 0.3)
+      const airPuff = Math.max(sensory.puff, typingLevel * 0.3)
+      lastLoomL = loomL
+      lastLoomR = loomR
 
       let signals = lastSignals
       if (simReady) {
@@ -177,6 +247,7 @@ export function createWorldLoop(opts: {
         }
       }
 
+      brain.sendHud(hudFromSignals(signals ?? lastSignals, loomL, loomR))
       sendWorld({
         dt,
         displayId: d.id,
@@ -188,6 +259,8 @@ export function createWorldLoop(opts: {
         flyCount,
         scareSeq,
         poses: lastPoses,
+        typing: typingLevel,
+        extrasMood: extrasMoodFromLeader(signals ?? lastSignals, pose.heading),
       })
     } finally {
       inFlight = false
@@ -199,6 +272,10 @@ export function createWorldLoop(opts: {
     const d = displayRect()
     const snap = windowSense.poll(desktop.getWindows(), d)
     ledges = snap.ledges
+    if (!loggedWindowLedges && ledges.length > 0) {
+      loggedWindowLedges = true
+      console.info(`window ledges: ${ledges.length}`)
+    }
     const fly = fly1()
     for (const nw of snap.newWindows) {
       const strength = windowLoomStrength(fly, nw.center)
@@ -251,6 +328,10 @@ export function createWorldLoop(opts: {
       return paused
     },
     isPaused: () => paused,
+    status: () => ({
+      gfSpike: lastSignals?.escape ?? false,
+      loom: Math.max(lastLoomL, lastLoomR),
+    }),
     escapeTest() {
       cursorLoom.escapeTest(0.6)
     },

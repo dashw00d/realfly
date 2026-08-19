@@ -83,7 +83,25 @@ function dist3(a: [number, number, number], b: [number, number, number]): number
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 }
 
-export function regionName(neurons: CircuitNeuronViz[], picked: number[]): string {
+/** PORT_CONTRACT click-to-body map: gf=escape, dng11=groom, dnp09=walk, mdn=backward, dna=steer, lc/lplc2=loom/nervous. */
+export const ROLE_BODY: Readonly<Record<string, string>> = {
+  gf: 'escape',
+  dng11: 'groom',
+  dnp09: 'walk',
+  mdn: 'backward',
+  dna01: 'steer',
+  dna02: 'steer',
+  lc: 'loom/nervous',
+  lc4: 'loom/nervous',
+  lplc2: 'loom/nervous',
+  escw: 'wing',
+}
+
+export function roleBody(role: string): string {
+  return ROLE_BODY[role] ?? ''
+}
+
+export function majorRole(neurons: CircuitNeuronViz[], picked: number[]): string {
   if (picked.length === 0) return ''
   const counts = new Map<string, number>()
   for (const i of picked) {
@@ -98,6 +116,12 @@ export function regionName(neurons: CircuitNeuronViz[], picked: number[]): strin
       majorN = n
     }
   }
+  return major
+}
+
+export function regionName(neurons: CircuitNeuronViz[], picked: number[]): string {
+  if (picked.length === 0) return ''
+  const major = majorRole(neurons, picked)
   const sideSuffix = (role: string): string => {
     let l = 0
     let r = 0

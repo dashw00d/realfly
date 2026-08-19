@@ -1,6 +1,6 @@
 {
   "name": "realfly",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "A fruit fly on your desktop, driven by a live FlyWire connectome simulation",
   "author": "Ryan Stefan",
@@ -39,11 +39,22 @@
     "files": [
       "dist/**/*",
       "package.json",
-      "node_modules/uiohook-napi/**"
+      "node_modules/uiohook-napi/**",
+      "native/desktop-env/*.node"
     ],
     "asarUnpack": [
       "**/*.node",
-      "**/uiohook-napi/**"
+      "**/uiohook-napi/**",
+      "native/desktop-env/**/*.node"
+    ],
+    "extraResources": [
+      {
+        "from": "native/desktop-env",
+        "to": "native/desktop-env",
+        "filter": [
+          "*.node"
+        ]
+      }
     ],
     "npmRebuild": false,
     "icon": "assets/tray-icon-256.png",

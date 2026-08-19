@@ -23,6 +23,7 @@ export type OverlayManager = {
   moveToDisplay(displayId: number): number
   moveToNextDisplay(): number
   onRecreated(cb: () => void): () => void
+  captureActive(): Promise<Buffer | null>
 }
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -206,6 +207,17 @@ export function createOverlayManager(): OverlayManager {
       recreated.add(cb)
       return () => {
         recreated.delete(cb)
+      }
+    },
+    captureActive: async () => {
+      const win = windows.get(primaryId)
+      if (!win || win.isDestroyed()) return null
+      try {
+        const img = await win.capturePage()
+        if (img.isEmpty()) return null
+        return img.toPNG()
+      } catch {
+        return null
       }
     },
   }

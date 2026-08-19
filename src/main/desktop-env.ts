@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DesktopWindow, Point } from '../shared/types'
 import {
@@ -76,7 +76,24 @@ type NativeAddon = {
 
 function nativeSearchDirs(): string[] {
   const here = dirname(fileURLToPath(import.meta.url))
-  return [join(here, '../../native/desktop-env'), join(process.cwd(), 'native/desktop-env')]
+  const unpacked = here.replace(`${sep}app.asar${sep}`, `${sep}app.asar.unpacked${sep}`)
+  const resources = process.resourcesPath
+  const dirs = [
+    join(here, '../../native/desktop-env'),
+    join(here, '../native/desktop-env'),
+    join(process.cwd(), 'native/desktop-env'),
+  ]
+  if (typeof resources === 'string' && resources.length > 0) {
+    dirs.push(
+      join(resources, 'native/desktop-env'),
+      join(resources, 'app.asar.unpacked', 'native/desktop-env'),
+      join(resources, 'app.asar.unpacked', 'dist', 'native', 'desktop-env'),
+    )
+  }
+  if (unpacked !== here) {
+    dirs.push(join(unpacked, '../../native/desktop-env'), join(unpacked, '../native/desktop-env'))
+  }
+  return dirs
 }
 
 function nativeFilenames(): string[] {
