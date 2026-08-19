@@ -31,6 +31,10 @@ if (runningUnderWsl() || existsSync('/mnt/wslg')) {
   )
 }
 
+if (process.platform === 'win32') {
+  app.setAppUserModelId('dev.realfly.desktopfly')
+}
+
 app.whenReady().then(() => {
   const desktop = createDesktopEnvironment()
   void desktop.getThermalFactor()
@@ -51,7 +55,8 @@ app.whenReady().then(() => {
     onTogglePause: () => world.setPaused(),
     onToggleBrain: () => brain.toggle(),
     onEscapeTest: () => world.escapeTest(),
-    onMoveToNextDisplay: () => world.moveToNextDisplay(),
+    activeDisplayId: () => overlays.activeDisplayId(),
+    onSelectDisplay: (id) => world.moveToDisplay(id),
     onAddFly: () => world.addFly(),
     onRemoveFly: () => world.removeFly(),
     onScareFlies: () => world.scare(),

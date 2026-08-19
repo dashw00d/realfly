@@ -1,6 +1,9 @@
 /** Electron `screen` topology. One overlay per physical display. */
 import { screen } from 'electron'
+import { formatDisplayLabel } from '../shared/display-label'
 import type { Point } from '../shared/types'
+
+export { formatDisplayLabel }
 
 export type DisplayBounds = {
   x: number
@@ -17,10 +20,13 @@ export type DisplayInfo = {
   height: number
   scaleFactor: number
   bounds: DisplayBounds
+  label: string
+  primary: boolean
 }
 
 function toInfo(display: Electron.Display): DisplayInfo {
   const { x, y, width, height } = display.bounds
+  const primaryId = screen.getPrimaryDisplay().id
   return {
     id: display.id,
     x,
@@ -29,6 +35,8 @@ function toInfo(display: Electron.Display): DisplayInfo {
     height,
     scaleFactor: display.scaleFactor,
     bounds: { x, y, width, height },
+    label: typeof display.label === 'string' ? display.label : '',
+    primary: display.id === primaryId,
   }
 }
 

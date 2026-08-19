@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      electron:
-        specifier: ^37.3.1
-        version: 37.10.3
       three:
         specifier: ^0.179.1
         version: 0.179.1
@@ -27,6 +24,9 @@ importers:
       '@types/three':
         specifier: ^0.179.0
         version: 0.179.0
+      electron:
+        specifier: ^37.3.1
+        version: 37.10.3
       electron-builder:
         specifier: ^26.15.3
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)

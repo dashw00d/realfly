@@ -28,6 +28,7 @@ export type WorldLoop = {
   addFly(): void
   removeFly(): void
   moveToNextDisplay(): void
+  moveToDisplay(displayId: number): void
   stimulate(indices: number[], strength?: number, durationMs?: number): void
   dispose(): void
 }
@@ -77,6 +78,8 @@ export function createWorldLoop(opts: {
         height: 1080,
         scaleFactor: 1,
         bounds: { x: 0, y: 0, width: 1920, height: 1080 },
+        label: '',
+        primary: true,
       }
     )
   }
@@ -263,6 +266,10 @@ export function createWorldLoop(opts: {
     },
     moveToNextDisplay() {
       overlays.moveToNextDisplay()
+      retarget()
+    },
+    moveToDisplay(displayId) {
+      overlays.moveToDisplay(displayId)
       retarget()
     },
     stimulate(indices, strength = 0.25, durationMs = 400) {

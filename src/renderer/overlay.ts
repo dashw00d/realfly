@@ -184,7 +184,10 @@ if (api) {
   })
   api.onMoveToNextDisplay((id) => {
     activeDisplayId = id
-    for (const { fly } of flies) fly.ledge = null
+    for (const { fly, view } of flies) {
+      fly.ledge = null
+      view.group.visible = isActive()
+    }
   })
   api.onWorld(applyWorld)
 } else {
@@ -210,10 +213,11 @@ function frame(now: number): void {
       flies[i]!.view.sync()
     }
     reportPoses()
-  } else {
+    flyScene.render()
+  } else if (isActive()) {
     for (const live of flies) live.view.sync()
+    flyScene.render()
   }
-  flyScene.render()
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)

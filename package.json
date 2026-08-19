@@ -1,6 +1,6 @@
 {
   "name": "realfly",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A fruit fly on your desktop, driven by a live FlyWire connectome simulation",
   "author": "Ryan Stefan",
@@ -46,6 +46,7 @@
       "**/uiohook-napi/**"
     ],
     "npmRebuild": false,
+    "icon": "assets/tray-icon-256.png",
     "win": {
       "signAndEditExecutable": false,
       "target": [

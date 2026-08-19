@@ -20,6 +20,7 @@ export type OverlayManager = {
   broadcast(channel: string, ...args: unknown[]): void
   activeDisplayId(): number
   activeDisplay(): DisplayInfo | undefined
+  moveToDisplay(displayId: number): number
   moveToNextDisplay(): number
   onRecreated(cb: () => void): () => void
 }
@@ -48,7 +49,10 @@ function applyAlwaysOnTop(win: BrowserWindow): void {
   win.setAlwaysOnTop(true)
 }
 
-function createOverlayWindow(display: Electron.Display): BrowserWindow {
+function createOverlayWindow(
+  display: Electron.Display,
+  isActive: () => boolean,
+): BrowserWindow {
   const preload = overlayPreloadPath()
   const win = new BrowserWindow({
     x: display.bounds.x,
@@ -98,7 +102,8 @@ function createOverlayWindow(display: Electron.Display): BrowserWindow {
       scaleFactor: display.scaleFactor,
       bounds: display.bounds,
     })
-    win.showInactive()
+    if (isActive()) win.showInactive()
+    else win.hide()
   })
 
   return win
@@ -117,6 +122,18 @@ export function createOverlayManager(): OverlayManager {
     windows.clear()
   }
 
+  /** Inactive overlays must be hidden — a transparent Windows window keeps its last WebGL frame. */
+  const applyActiveVisibility = (): void => {
+    for (const [id, win] of windows) {
+      if (win.isDestroyed()) continue
+      if (id === primaryId) {
+        if (!win.isVisible()) win.showInactive()
+      } else if (win.isVisible()) {
+        win.hide()
+      }
+    }
+  }
+
   const recreate = (): void => {
     if (disposed) return
     destroyAll()
@@ -125,9 +142,23 @@ export function createOverlayManager(): OverlayManager {
       primaryId = displays[0].id
     }
     for (const display of displays) {
-      windows.set(display.id, createOverlayWindow(display))
+      windows.set(display.id, createOverlayWindow(display, () => display.id === primaryId))
     }
+    applyActiveVisibility()
     for (const cb of recreated) cb()
+  }
+
+  const moveToDisplay = (displayId: number): number => {
+    const ids = screen.getAllDisplays().map((d) => d.id)
+    if (ids.includes(displayId)) primaryId = displayId
+    applyActiveVisibility()
+    for (const win of windows.values()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('activeDisplay', primaryId)
+        win.webContents.send('moveToNextDisplay', primaryId)
+      }
+    }
+    return primaryId
   }
 
   const unsubscribe = subscribeDisplayChanges(() => {
@@ -162,14 +193,12 @@ export function createOverlayManager(): OverlayManager {
     },
     activeDisplayId: () => primaryId,
     activeDisplay: () => listDisplays().find((d) => d.id === primaryId),
+    moveToDisplay,
     moveToNextDisplay: () => {
       const ids = screen.getAllDisplays().map((d) => d.id)
       if (ids.length >= 2) {
         const idx = Math.max(0, ids.indexOf(primaryId))
-        primaryId = ids[(idx + 1) % ids.length]!
-      }
-      for (const win of windows.values()) {
-        if (!win.isDestroyed()) win.webContents.send('moveToNextDisplay', primaryId)
+        return moveToDisplay(ids[(idx + 1) % ids.length]!)
       }
       return primaryId
     },

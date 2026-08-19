@@ -63,3 +63,8 @@ mkdirSync(join(dist, 'renderer'), { recursive: true })
 cpSync(join(root, 'src/renderer/overlay.html'), join(dist, 'renderer/overlay.html'))
 cpSync(join(root, 'src/renderer/brain.html'), join(dist, 'renderer/brain.html'))
 cpSync(join(root, 'data'), join(dist, 'data'), { recursive: true })
+const assets = join(root, 'assets')
+if (existsSync(assets)) {
+  mkdirSync(join(dist, 'assets'), { recursive: true })
+  cpSync(assets, join(dist, 'assets'), { recursive: true })
+}
