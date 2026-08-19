@@ -1,6 +1,15 @@
 {
   "name": "realfly",
+  "version": "0.1.0",
   "private": true,
+  "description": "A fruit fly on your desktop, driven by a live FlyWire connectome simulation",
+  "author": "Ryan Stefan",
+  "license": "MIT",
+  "homepage": "https://github.com/dashw00d/realfly",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dashw00d/realfly.git"
+  },
   "type": "module",
   "packageManager": "pnpm@11.3.0",
   "main": "dist/main/index.js",
@@ -18,7 +27,6 @@
     "dist:win": "node scripts/build.mjs && electron-builder --win dir portable --x64"
   },
   "dependencies": {
-    "electron": "^37.3.1",
     "three": "^0.179.1",
     "uiohook-napi": "^1.5.5"
   },
@@ -57,6 +65,7 @@
     }
   },
   "devDependencies": {
+    "electron": "^37.3.1",
     "@electron/rebuild": "^4.2.0",
     "@types/node": "^22.18.0",
     "@types/three": "^0.179.0",
