@@ -9,15 +9,12 @@ circuit.
 </p>
 
 <p align="center">
-  <video src="docs/fly.mp4" poster="docs/fly.jpg" width="720" autoplay muted loop playsinline controls>
-    <source src="docs/fly.mp4" type="video/mp4">
-    <source src="docs/fly.webm" type="video/webm">
-  </video>
+  <img src="docs/fly.gif" width="720" alt="A fruit fly walking on the Windows desktop overlay">
 </p>
 
 <p align="center"><sub>
 The fly living on a Windows desktop — click-through overlay, connectome-driven
-escape. Source clip: <a href="docs/fly.webm">docs/fly.webm</a>
+escape. Source: <a href="docs/fly.webm">docs/fly.webm</a>
 </sub></p>
 
 <p align="center"><sub>
