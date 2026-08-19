@@ -1,0 +1,67 @@
+{
+  "name": "realfly",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.3.0",
+  "main": "dist/main/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/build.mjs && electron .",
+    "typecheck": "tsc --noEmit",
+    "rebuild:hooks": "node scripts/rebuild-native.mjs",
+    "sync:win": "node scripts/sync-windows.mjs",
+    "start:win": "node scripts/sync-windows.mjs && powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\Users\\ryan\\sites\\realfly\\scripts\\start-windows.ps1",
+    "dist:win": "node scripts/build.mjs && electron-builder --win dir portable --x64"
+  },
+  "dependencies": {
+    "electron": "^37.3.1",
+    "three": "^0.179.1",
+    "uiohook-napi": "^1.5.5"
+  },
+  "build": {
+    "appId": "dev.realfly.desktopfly",
+    "productName": "DesktopFly",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/*.node",
+      "**/uiohook-napi/**"
+    ],
+    "npmRebuild": false,
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "@types/node": "^22.18.0",
+    "@types/three": "^0.179.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.25.9",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

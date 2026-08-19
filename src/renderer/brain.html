@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fly Brain — FlyWire v783 (click = stimulate)</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: crosshair;
+      }
+      #stim-label {
+        position: absolute;
+        left: 50%;
+        bottom: 10px;
+        transform: translateX(-50%);
+        padding: 4px 10px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #f2f2f2;
+        font: 500 11px/1.4 system-ui, sans-serif;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="brain"></canvas>
+    <div id="stim-label" hidden></div>
+    <script type="module" src="./brain.js"></script>
+  </body>
+</html>

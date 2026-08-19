@@ -1,0 +1,21 @@
+[package]
+name = "desktop-env"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "Native desktop window/cursor/idle/input for realfly (NAPI-RS)"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", default-features = false, features = ["napi8"] }
+napi-derive = "2"
+
+[build-dependencies]
+napi-build = "2"
+
+[package.metadata.napi]
+name = "desktop-env"
+# XCap is reference-only; do not add it as a dependency.
