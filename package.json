@@ -30,7 +30,8 @@
     },
     "files": [
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/uiohook-napi/**"
     ],
     "asarUnpack": [
       "**/*.node",
