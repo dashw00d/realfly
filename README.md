@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="vendor/desktop-fly/assets/fly.png" width="340" alt="DesktopFly — a 3D fruit fly">
-</p>
-
 <h1 align="center">realfly</h1>
 
 <p align="center">
@@ -13,14 +9,21 @@ circuit.
 </p>
 
 <p align="center">
-  <img src="vendor/desktop-fly/assets/brain.png" width="560" alt="Live brain window: 23,210 real neuron positions, spikes flashing">
+  <video src="docs/fly.mp4" poster="docs/fly.jpg" width="720" autoplay muted loop playsinline controls>
+    <source src="docs/fly.mp4" type="video/mp4">
+    <source src="docs/fly.webm" type="video/webm">
+  </video>
 </p>
 
 <p align="center"><sub>
-The fly's brain window: 23,210 real neuron soma positions from FlyWire v783,
-with live spikes flashing at real neuron locations. The two glowing yellow
-markers are the Giant Fibers — the escape command neurons. Click any region
-to stimulate it.
+The fly living on a Windows desktop — click-through overlay, connectome-driven
+escape. Source clip: <a href="docs/fly.webm">docs/fly.webm</a>
+</sub></p>
+
+<p align="center"><sub>
+The brain window (Show/Hide Brain in the tray) plots 23,210 real neuron soma
+positions from FlyWire v783. Spikes flash at those locations; the two yellow
+markers are the Giant Fibers. Click a region to stimulate it.
 </sub></p>
 
 This is a **port**, not a rewrite. LIF constants, hysteresis thresholds, and
